@@ -1,0 +1,17 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+    <l:layout title="VDOO Scan Results">
+        <l:side-panel>
+                <st:include page="sidepanel.jelly" it="${it.run}" optional="true" />
+        </l:side-panel>
+        <l:main-panel>
+            <div>
+                <h1> VDOO Report Results </h1>  <br/><br/>
+                <iframe width="100%" height="800" frameborder="0" src="${it.reportLink}"/>
+                <h3> <a href="${it.reportLink}"> Link to report for firmware ${it.fwName} </a> </h3>  <br/><br/>
+
+
+            </div>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>
