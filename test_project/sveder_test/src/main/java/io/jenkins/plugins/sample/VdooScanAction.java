@@ -52,10 +52,10 @@ public class VdooScanAction implements RunAction2 {
 
     private transient Run run;
 
-    public VdooScanAction(Secret vdooToken, String failStatus, PrintStream logger) throws IOException, InterruptedException {
+    public VdooScanAction(Secret vdooToken, String failStatus, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
         this.failStatus = failStatus;
-        logger.println("----> Initial failStatus:" + failStatus);
+        this.run = run;
 
         statusToInt = Stream.of(new Object[][] {
                 { "Very High",  10},
@@ -74,7 +74,7 @@ public class VdooScanAction implements RunAction2 {
 
         this.firmwareUUID = uploadDetails.get("firmware_id").textValue();
         System.out.println("New firmware id:" + this.firmwareUUID);
-        logger.println("New firmware id:" + this.firmwareUUID);
+        logger.println("[VDOO Vision Scanner] Firmware uploaded successfully. Firmware UUID: " + this.firmwareUUID);
 
         Regions clientRegion = Regions.US_WEST_2;
         String bucketName = uploadDetails.get("bucket").textValue();
@@ -121,9 +121,10 @@ public class VdooScanAction implements RunAction2 {
         Thread.sleep(60 * 1000);
 
         String status = waitForEndStatus(logger);
+
         if (status.equals("Failure")) {
-            String failMessage = "Vision failed to scan the firmware. Contact support for further details. Firmware " +
-                    "UUID: " + this.firmwareUUID;
+            String failMessage = "[VDOO Vision Scanner] Vision failed to scan the firmware. Contact support " +
+                    "for further details. Firmware UUID: " + this.firmwareUUID;
 
             logger.println(failMessage);
             throw new AbortException(failMessage);
@@ -135,13 +136,33 @@ public class VdooScanAction implements RunAction2 {
             null
         );
 
-        logger.println("----> failStatus:" + failStatus);
-        logger.println("----> threatLevel:" + getThreatLevel());
+        //Save report artifact:
+        JsonNode statusJson = callUrl(
+                "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/scan_status/",
+                "GET",
+                null
+        );
 
-        if (statusToInt.get(this.getThreatLevel()) > statusToInt.get(failStatus))
+        Integer reportId = statusJson.get("analysis_status").get("report_id").intValue();
+
+        JsonNode fullReportJson = callUrl(
+                "https://prod.vdoo.io/v1/firmware/" + reportId + "/",
+                "GET",
+                null
+        );
+
+        File artifactDir = new File(run.getArtifactsDir(), "VDOOVision" + run.getQueueId());
+        artifactDir.mkdirs();
+
+        File path = new File(artifactDir, "report.json");
+
+        FileWriter writer = new FileWriter(path.toString());
+        writer.write(fullReportJson.toPrettyString());
+        writer.close();
+
+        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(failStatus))
         {
-            String failMessage = "Firmware threat level is higher than configured.";
-            logger.println(failMessage);
+            String failMessage = "[VDOO Vision Scanner] Firmware threat level is higher than configured.";
             throw new AbortException(failMessage);
         }
 
@@ -167,7 +188,7 @@ public class VdooScanAction implements RunAction2 {
                 return status;
             }
 
-            logger.println("[VDOO Vision Scan] Waiting for results (" + currentTry + " minutes). Current " +
+            logger.println("[VDOO Vision Scanner] Waiting for results (" + currentTry + " minutes). Current " +
                     "status: " + status);
 
             Thread.sleep(60 * 1000);

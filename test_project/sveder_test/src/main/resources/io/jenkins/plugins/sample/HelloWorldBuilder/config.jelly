@@ -5,7 +5,7 @@
             <f:password />
     </f:entry>
 
-    <f:entry title="${%FailStatus}" name="failStatus" field="failStatus">
+    <f:entry title="${%FailStatus}" name="failStatus" field="failStatus" description="${%FailStatusDescr}">
         <select name="failStatus" default="High">
             <option value="Very High">Very High</option>
             <option value="High">High</option>

@@ -55,7 +55,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
 
-        run.addAction(new VdooScanAction(this.vdooToken, this.failStatus, listener.getLogger()));
+        run.addAction(new VdooScanAction(this.vdooToken, this.failStatus, listener.getLogger(), run));
     }
 
     @Symbol("greet")
