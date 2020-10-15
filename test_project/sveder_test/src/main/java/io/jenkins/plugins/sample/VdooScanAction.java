@@ -1,5 +1,7 @@
 package io.jenkins.plugins.sample;
 
+import hudson.AbortException;
+
 import hudson.model.Run;
 import jenkins.model.RunAction2;
 import sun.misc.IOUtils;
@@ -27,18 +29,42 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import hudson.util.Secret;
+import hudson.model.Result;
+
+
 
 public class VdooScanAction implements RunAction2 {
-    private String vdooToken;
+    private Secret vdooToken;
+    private String failStatus;
+
     private String firmwareUUID;
     private JsonNode reportJson;
 
+    private Map<String, Integer> statusToInt;
+
+
+
     private transient Run run;
 
-    public VdooScanAction(String vdooToken, PrintStream logger) throws IOException, InterruptedException {
+    public VdooScanAction(Secret vdooToken, String failStatus, PrintStream logger) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
-        this.firmwareUUID = firmwareUUID;
+        this.failStatus = failStatus;
+        logger.println("----> Initial failStatus:" + failStatus);
+
+        statusToInt = Stream.of(new Object[][] {
+                { "Very High",  10},
+                { "High",  8},
+                { "Medium",  6},
+                { "Low",  4},
+                { "Very Low",  2},
+        }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
+
 
         JsonNode uploadDetails = callUrl(
                 "https://prod.vdoo.io/v1/cicd/upload_request/",
@@ -54,6 +80,7 @@ public class VdooScanAction implements RunAction2 {
         String bucketName = uploadDetails.get("bucket").textValue();
         String keyName = uploadDetails.get("key").textValue();
         String filePath = "c:/firmware/demo_firmware";
+//        String filePath = "c:/firmware/encrypted.had";
 
         try {
 
@@ -90,15 +117,63 @@ public class VdooScanAction implements RunAction2 {
             e.printStackTrace();
         }
 
-        Thread.sleep(10 *   // minutes to sleep
-                60 *   // seconds to a minute
-                1000); // milliseconds to a second
+        // Sleep one minute to allow the firmware to get taken from the queue:
+        Thread.sleep(60 * 1000);
+
+        String status = waitForEndStatus(logger);
+        if (status.equals("Failure")) {
+            String failMessage = "Vision failed to scan the firmware. Contact support for further details. Firmware " +
+                    "UUID: " + this.firmwareUUID;
+
+            logger.println(failMessage);
+            throw new AbortException(failMessage);
+        }
 
         this.reportJson = callUrl(
-                "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/report_results/",
+            "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/report_results/",
+            "GET",
+            null
+        );
+
+        logger.println("----> failStatus:" + failStatus);
+        logger.println("----> threatLevel:" + getThreatLevel());
+
+        if (statusToInt.get(this.getThreatLevel()) > statusToInt.get(failStatus))
+        {
+            String failMessage = "Firmware threat level is higher than configured.";
+            logger.println(failMessage);
+            throw new AbortException(failMessage);
+        }
+
+
+    }
+
+    private String waitForEndStatus(PrintStream logger) throws IOException, InterruptedException {
+        int maxTries = 60;
+        int currentTry = 0;
+
+        while (currentTry < maxTries)
+        {
+            currentTry += 1;
+
+            JsonNode statusJson = callUrl(
+                "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/scan_status/",
                 "GET",
                 null
-        );
+            );
+
+            String status = statusJson.get("analysis_status").get("current").get("name").textValue();
+            if (status.equals("Success") || status.equals("Failure")) {
+                return status;
+            }
+
+            logger.println("[VDOO Vision Scan] Waiting for results (" + currentTry + " minutes). Current " +
+                    "status: " + status);
+
+            Thread.sleep(60 * 1000);
+        }
+
+        return "timeout";
     }
 
     private JsonNode callUrl(String urlString, String method, String postParams) throws IOException {
@@ -155,7 +230,7 @@ public class VdooScanAction implements RunAction2 {
         return "vdoo-report";
     }
 
-    public String getVdooToken() {
+    public Secret getVdooToken() {
         return this.vdooToken;
     }
 
@@ -191,11 +266,6 @@ public class VdooScanAction implements RunAction2 {
         return this.reportJson.get("threat_level").textValue();
     }
 
-    public String getTime() {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        return dtf.format(now);
-    }
 
     @Override
     public void onAttached(Run<?, ?> run) {

@@ -14,6 +14,8 @@ import io.jenkins.plugins.sample.VdooScanAction;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import hudson.util.Secret;
+
 import javax.servlet.ServletException;
 import java.io.IOException;
 import jenkins.tasks.SimpleBuildStep;
@@ -22,15 +24,19 @@ import org.kohsuke.stapler.DataBoundSetter;
 
 public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
 
-    private final String vdooToken;
+    private final Secret vdooToken;
+    private final String failStatus;
 
     private final String name;
     private boolean useFrench;
 
     @DataBoundConstructor
-    public HelloWorldBuilder(String name, String vdooToken) {
-        this.name = name;
+    public HelloWorldBuilder(Secret vdooToken, String failStatus) {
+        this.name = "moo";
         this.vdooToken = vdooToken;
+        this.failStatus = failStatus;
+
+        int x = 5*5;
     }
 
     public String getName() {
@@ -49,8 +55,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
 
-        run.addAction(new VdooScanAction(vdooToken, listener.getLogger()));
-        //listener.getLogger().println("Bonjour, " + name + "!");
+        run.addAction(new VdooScanAction(this.vdooToken, this.failStatus, listener.getLogger()));
     }
 
     @Symbol("greet")
