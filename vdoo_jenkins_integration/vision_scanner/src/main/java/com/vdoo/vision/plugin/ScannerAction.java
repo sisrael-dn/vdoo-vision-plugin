@@ -44,7 +44,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 )
 public class ScannerAction implements RunAction2 {
     private Secret vdooToken;
-    private String failStatus;
+    private String failThreshold;
     private String baseApi;
     private String firmwareLocation;
     private Integer productId;
@@ -56,9 +56,9 @@ public class ScannerAction implements RunAction2 {
 
     private transient Run run;
 
-    public ScannerAction(Secret vdooToken, String failStatus, Integer productId, String firmwareLocation, String baseApi, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
+    public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
-        this.failStatus = failStatus;
+        this.failThreshold = failThreshold;
         this.baseApi = baseApi;
         this.productId = productId;
         this.firmwareLocation = firmwareLocation;
@@ -178,7 +178,7 @@ public class ScannerAction implements RunAction2 {
             logger.println("[VDOO Vision Scanner] Couldn't create artifact directory. Artifacts won't be saved.");
         }
 
-        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failStatus))
+        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
         {
             String failMessage = "[VDOO Vision Scanner] Firmware threat level is higher than configured.";
             throw new AbortException(failMessage);

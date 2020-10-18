@@ -25,16 +25,16 @@ import org.kohsuke.stapler.DataBoundSetter;
 public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
     private final Secret vdooToken;
-    private final String failStatus;
+    private final String failThreshold;
     private Integer productId;
     private String firmwareLocation;
 
     private String baseApi;
 
     @DataBoundConstructor
-    public ScannerBuilder(Secret vdooToken, String failStatus, Integer productId, String firmwareLocation) {
+    public ScannerBuilder(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation) {
         this.vdooToken = vdooToken;
-        this.failStatus = failStatus;
+        this.failThreshold = failThreshold;
         this.productId = productId;
         this.firmwareLocation = firmwareLocation;
     }
@@ -43,8 +43,8 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         return vdooToken;
     }
 
-    public String getFailStatus() {
-        return failStatus;
+    public String getFailThreshold() {
+        return failThreshold;
     }
 
     public Integer getProductId() {
@@ -63,7 +63,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
 
-        run.addAction(new ScannerAction(this.vdooToken, this.failStatus, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
+        run.addAction(new ScannerAction(this.vdooToken, failThreshold, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
     }
 
     @Symbol("greet")
