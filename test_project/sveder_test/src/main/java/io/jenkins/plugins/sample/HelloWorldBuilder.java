@@ -26,15 +26,22 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
 
     private final Secret vdooToken;
     private final String failStatus;
+    private Integer productId;
+    private String firmwareLocation;
+
+    private String baseApi;
 
     private final String name;
     private boolean useFrench;
 
     @DataBoundConstructor
-    public HelloWorldBuilder(Secret vdooToken, String failStatus) {
+    public HelloWorldBuilder(Secret vdooToken, String failStatus, Integer productId, String firmwareLocation) {
         this.name = "moo";
         this.vdooToken = vdooToken;
         this.failStatus = failStatus;
+        this.productId = productId;
+        this.firmwareLocation = firmwareLocation;
+
 
         int x = 5*5;
     }
@@ -52,10 +59,15 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
         this.useFrench = useFrench;
     }
 
+    @DataBoundSetter
+    public void setBaseApi(String baseApi) {
+        this.baseApi = baseApi;
+    }
+
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
 
-        run.addAction(new VdooScanAction(this.vdooToken, this.failStatus, listener.getLogger(), run));
+        run.addAction(new VdooScanAction(this.vdooToken, this.failStatus, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
     }
 
     @Symbol("greet")
@@ -64,13 +76,13 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
 
         public FormValidation doCheckName(@QueryParameter String value, @QueryParameter boolean useFrench)
                 throws IOException, ServletException {
-            if (value.length() == 0)
-                return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingName());
-            if (value.length() < 4)
-                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_tooShort());
-            if (!useFrench && value.matches(".*[éáàç].*")) {
-                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_reallyFrench());
-            }
+//            if (value.length() == 0)
+//                return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingName());
+//            if (value.length() < 4)
+//                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_tooShort());
+//            if (!useFrench && value.matches(".*[éáàç].*")) {
+//                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_reallyFrench());
+//            }
             return FormValidation.ok();
         }
 

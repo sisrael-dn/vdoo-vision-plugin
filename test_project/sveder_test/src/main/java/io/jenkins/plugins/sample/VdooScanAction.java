@@ -42,6 +42,9 @@ import hudson.model.Result;
 public class VdooScanAction implements RunAction2 {
     private Secret vdooToken;
     private String failStatus;
+    private String baseApi;
+    private String firmwareLocation;
+    private Integer productId;
 
     private String firmwareUUID;
     private JsonNode reportJson;
@@ -52,24 +55,28 @@ public class VdooScanAction implements RunAction2 {
 
     private transient Run run;
 
-    public VdooScanAction(Secret vdooToken, String failStatus, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
+    public VdooScanAction(Secret vdooToken, String failStatus, Integer productId, String firmwareLocation, String baseApi, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
         this.failStatus = failStatus;
+        this.baseApi = baseApi;
+        this.productId = productId;
+        this.firmwareLocation = firmwareLocation;
         this.run = run;
 
-        statusToInt = Stream.of(new Object[][] {
-                { "Very High",  10},
-                { "High",  8},
-                { "Medium",  6},
-                { "Low",  4},
-                { "Very Low",  2},
+        statusToInt = Stream.of(new Object[][]{
+            {"None", 20},
+            { "Very High",  10},
+            { "High",  8},
+            { "Medium",  6},
+            { "Low",  4},
+            { "Very Low",  2},
         }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
 
         JsonNode uploadDetails = callUrl(
-                "https://prod.vdoo.io/v1/cicd/upload_request/",
+                "v1/cicd/upload_request/",
                 "POST",
-                "product_id=830"
+                "product_id=" + this.productId
         );
 
         this.firmwareUUID = uploadDetails.get("firmware_id").textValue();
@@ -79,8 +86,7 @@ public class VdooScanAction implements RunAction2 {
         Regions clientRegion = Regions.US_WEST_2;
         String bucketName = uploadDetails.get("bucket").textValue();
         String keyName = uploadDetails.get("key").textValue();
-        String filePath = "c:/firmware/demo_firmware";
-//        String filePath = "c:/firmware/encrypted.had";
+        String filePath = this.firmwareLocation;
 
         try {
 
@@ -131,14 +137,14 @@ public class VdooScanAction implements RunAction2 {
         }
 
         this.reportJson = callUrl(
-            "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/report_results/",
+            "v1/cicd/" + this.firmwareUUID + "/report_results/",
             "GET",
             null
         );
 
         //Save report artifact:
         JsonNode statusJson = callUrl(
-                "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/scan_status/",
+                "v1/cicd/" + this.firmwareUUID + "/scan_status/",
                 "GET",
                 null
         );
@@ -146,7 +152,7 @@ public class VdooScanAction implements RunAction2 {
         Integer reportId = statusJson.get("analysis_status").get("report_id").intValue();
 
         JsonNode fullReportJson = callUrl(
-                "https://prod.vdoo.io/v1/firmware/" + reportId + "/",
+                "v1/firmware/" + reportId + "/",
                 "GET",
                 null
         );
@@ -178,7 +184,7 @@ public class VdooScanAction implements RunAction2 {
             currentTry += 1;
 
             JsonNode statusJson = callUrl(
-                "https://prod.vdoo.io/v1/cicd/" + this.firmwareUUID + "/scan_status/",
+                "v1/cicd/" + this.firmwareUUID + "/scan_status/",
                 "GET",
                 null
             );
@@ -198,10 +204,14 @@ public class VdooScanAction implements RunAction2 {
     }
 
     private JsonNode callUrl(String urlString, String method, String postParams) throws IOException {
+        urlString = this.baseApi + urlString;
+
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
         connection.setRequestProperty("accept", "application/json");
         connection.setRequestProperty("Authorization", "Token " + this.vdooToken);
+
         HttpURLConnection http = (HttpURLConnection) connection;
         http.setRequestMethod(method);
         http.setDoOutput(true);

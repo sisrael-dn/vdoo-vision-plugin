@@ -7,6 +7,7 @@
 
     <f:entry title="${%FailStatus}" name="failStatus" field="failStatus" description="${%FailStatusDescr}">
         <select name="failStatus" default="High">
+            <option value="None">None</option>
             <option value="Very High">Very High</option>
             <option value="High">High</option>
             <option value="Medium">Medium</option>
@@ -14,5 +15,20 @@
             <option value="Very Low">Very Low</option>
         </select>
     </f:entry>
+
+    <f:entry title="${%ProductId}" field="productId" description="${%ProductIdDescr}">
+            <f:textbox field="productId" />
+    </f:entry>
+
+    <f:entry title="${%FirmwareLocation}" field="firmwareLocation" description="${%FirmwareLocationDescr}">
+        <f:textbox field="firmwareLocation" />
+    </f:entry>
+
+
+    <f:advanced>
+        <f:entry title="${%BaseApi}" field="baseApi" description="${%BaseApiDescr}">
+            <f:textbox field="baseApi" default="https://prod.vdoo.io/" />
+        </f:entry>
+    </f:advanced>
 
 </j:jelly>
