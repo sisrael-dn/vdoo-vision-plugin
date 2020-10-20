@@ -43,6 +43,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
         justification="TODO :)"
 )
 public class ScannerAction implements RunAction2 {
+    public static final String REPORT_DIRECTORY_NAME = "VDOOVision";
     private Secret vdooToken;
     private String failThreshold;
     private String baseApi;
@@ -53,6 +54,8 @@ public class ScannerAction implements RunAction2 {
     private transient JsonNode reportJson;
     private transient JsonNode statusJson;
     private Map<String, Integer> statusToInt;
+    private transient String sdkName = "jenkins_plugin";
+    private transient String sdkVersion = "0.1";
 
     private transient Run run;
 
@@ -73,11 +76,11 @@ public class ScannerAction implements RunAction2 {
             { "Very Low",  2},
         }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
-
+        String uploadParams = "product_id=" + this.productId + "&sdk_version=" + sdkVersion + "&sdk_name=" + sdkName;
         JsonNode uploadDetails = callUrl(
                 "v1/cicd/upload_request/",
                 "POST",
-                "product_id=" + this.productId
+                uploadParams
         );
 
         this.firmwareUUID = uploadDetails.get("firmware_id").textValue();
@@ -144,26 +147,40 @@ public class ScannerAction implements RunAction2 {
             null
         );
 
-        File artifactDir = new File(run.getArtifactsDir(), "VDOOVision" + run.getQueueId());
+        this.saveReportArtifact(logger);
+
+        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
+        {
+            String failMessage = "[VDOO Vision Scanner] Firmware threat level '" + this.getThreatLevel() +
+                    "' is higher than configured threshold '" + this.failThreshold + "'.";
+            throw new AbortException(failMessage);
+        }
+
+        String failMessage = "[VDOO Vision Scanner] VDOO Vision scan successfully finished.";
+        logger.println(failMessage);
+    }
+
+    private Boolean saveReportArtifact(PrintStream logger) throws IOException {
+        File artifactDir = new File(run.getArtifactsDir(), REPORT_DIRECTORY_NAME + run.getQueueId());
 
         Boolean wasArtifactDirCreated = artifactDir.mkdirs();
 
         if (wasArtifactDirCreated) {
-            JsonNode statusJson = callUrl(
+            JsonNode statusJson = this.callUrl(
                     "v1/cicd/" + this.firmwareUUID + "/scan_status/",
                     "GET",
                     null
             );
 
-            Integer reportId = statusJson.get("analysis_status").get("report_id").intValue();
+            Integer reportId = this.statusJson.get("analysis_status").get("report_id").intValue();
 
-            JsonNode fullReportJson = callUrl(
+            JsonNode fullReportJson = this.callUrl(
                     "v1/firmware/" + reportId + "/",
                     "GET",
                     null
             );
 
-            File path = new File(artifactDir, "report.json");
+            File path = new File(artifactDir, "vdoo_vision_report_" + reportId + ".json");
             FileWriter writer = new FileWriter(path.toString());
 
             try {
@@ -173,16 +190,11 @@ public class ScannerAction implements RunAction2 {
                 writer.close();
             }
 
-
         } else {
             logger.println("[VDOO Vision Scanner] Couldn't create artifact directory. Artifacts won't be saved.");
         }
 
-        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
-        {
-            String failMessage = "[VDOO Vision Scanner] Firmware threat level is higher than configured.";
-            throw new AbortException(failMessage);
-        }
+        return wasArtifactDirCreated;
     }
 
     private String waitForEndStatus(PrintStream logger) throws IOException, InterruptedException {
@@ -223,6 +235,7 @@ public class ScannerAction implements RunAction2 {
         connection.setRequestProperty("Authorization", "Token " + this.vdooToken);
 
         HttpURLConnection http = (HttpURLConnection) connection;
+        http.setConnectTimeout(5000);
         http.setRequestMethod(method);
         http.setDoOutput(true);
 

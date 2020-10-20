@@ -66,15 +66,8 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         run.addAction(new ScannerAction(this.vdooToken, failThreshold, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
     }
 
-    @Symbol("greet")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-        public FormValidation doCheckName(@QueryParameter String value, @QueryParameter boolean useFrench)
-                throws IOException, ServletException {
-
-            return FormValidation.ok();
-        }
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
