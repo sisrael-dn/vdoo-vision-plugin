@@ -1,26 +1,29 @@
 package com.vdoo.vision.plugin;
 
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Extension;
-import hudson.FilePath;
+import hudson.model.Job;
+import hudson.model.Run;
+import hudson.util.Secret;
+import hudson.model.Result;
+import hudson.tasks.Builder;
+import hudson.model.TaskListener;
 import hudson.util.FormValidation;
 import hudson.model.AbstractProject;
-import hudson.model.Run;
-import hudson.model.Result;
-import hudson.model.TaskListener;
-import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
+
 import com.vdoo.vision.plugin.ScannerAction;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-
-import hudson.util.Secret;
-
 import javax.servlet.ServletException;
+import java.io.File;
 import java.io.IOException;
 import jenkins.tasks.SimpleBuildStep;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.AncestorInPath;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+
 
 public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
@@ -66,8 +69,31 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         run.addAction(new ScannerAction(this.vdooToken, failThreshold, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
     }
 
+
+    @Symbol({ "vdooToken", "failThreshold", "productId", "firmwareLocation", "baseApi" })
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+        public FormValidation doCheckProductId(@QueryParameter String productId) {
+            if ((productId == null) || (productId.equals(""))) {
+                return FormValidation.error("Product ID can't be empty or null.");
+            }
+
+            try {
+                Integer.parseInt(productId);
+            } catch (NumberFormatException nfe) {
+                return FormValidation.error("Product Id must be a number.");
+            }
+
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckFirmwareLocation(@QueryParameter String firmwareLocation) {
+            if ((firmwareLocation == null) || (firmwareLocation.equals(""))) {
+                return FormValidation.error("Firmware location can't be empty or null.");
+            }
+
+            return FormValidation.ok();
+        }
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {

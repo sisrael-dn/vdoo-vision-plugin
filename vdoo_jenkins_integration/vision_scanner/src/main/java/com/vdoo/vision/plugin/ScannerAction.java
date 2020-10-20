@@ -38,10 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-@SuppressFBWarnings(
-        value="DM_DEFAULT_ENCODING",
-        justification="TODO :)"
-)
+
 public class ScannerAction implements RunAction2 {
     public static final String REPORT_DIRECTORY_NAME = "VDOOVision";
     private Secret vdooToken;
@@ -93,7 +90,6 @@ public class ScannerAction implements RunAction2 {
         String filePath = this.firmwareLocation;
 
         try {
-
             BasicSessionCredentials creds = new BasicSessionCredentials(
                     uploadDetails.get("access_key_id").textValue(),
                     uploadDetails.get("secret_access_key").textValue(),
@@ -181,7 +177,7 @@ public class ScannerAction implements RunAction2 {
             );
 
             File path = new File(artifactDir, "vdoo_vision_report_" + reportId + ".json");
-            FileWriter writer = new FileWriter(path.toString());
+            Writer writer = new OutputStreamWriter(new FileOutputStream(path.toString()), "UTF-8");
 
             try {
                 writer.write(fullReportJson.toPrettyString());
@@ -232,7 +228,7 @@ public class ScannerAction implements RunAction2 {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
         connection.setRequestProperty("accept", "application/json");
-        connection.setRequestProperty("Authorization", "Token " + this.vdooToken);
+        connection.setRequestProperty("Authorization", "Token " + this.vdooToken.getPlainText());
 
         HttpURLConnection http = (HttpURLConnection) connection;
         http.setConnectTimeout(5000);
