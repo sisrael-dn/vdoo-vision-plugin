@@ -1,42 +1,42 @@
 package com.vdoo.vision.plugin;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.transfer.Upload;
+import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.amazonaws.services.s3.transfer.Upload;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicSessionCredentials;
+
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.time.LocalDateTime;
+import java.nio.charset.Charset;
+import java.net.HttpURLConnection;
+import java.util.stream.Collectors;
+import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import hudson.model.Run;
+import sun.misc.IOUtils;
 import hudson.util.Secret;
 import hudson.model.Result;
 import hudson.AbortException;
-import hudson.model.Run;
-
 import jenkins.model.RunAction2;
-import sun.misc.IOUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 
 public class ScannerAction implements RunAction2 {
@@ -88,6 +88,7 @@ public class ScannerAction implements RunAction2 {
         String bucketName = uploadDetails.get("bucket").textValue();
         String keyName = uploadDetails.get("key").textValue();
         String filePath = this.firmwareLocation;
+        File file = new File(filePath);
 
         try {
             BasicSessionCredentials creds = new BasicSessionCredentials(
@@ -105,9 +106,15 @@ public class ScannerAction implements RunAction2 {
                     .withS3Client(s3Client)
                     .build();
 
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType("plain/text");
+            metadata.addUserMetadata("name", file.getName());
+            metadata.addUserMetadata("size", "" + file.length());  // file.length returns type "long" without a
+                                                                   // toString method. Wat :)
+
             // TransferManager processes all transfers asynchronously,
             // so this call returns immediately.
-            Upload upload = tm.upload(bucketName, keyName, new File(filePath));
+            Upload upload = tm.upload(bucketName, keyName, new FileInputStream(file), metadata);
             System.out.println("Object upload started");
 
             // Optionally, wait for the upload to finish before continuing.
