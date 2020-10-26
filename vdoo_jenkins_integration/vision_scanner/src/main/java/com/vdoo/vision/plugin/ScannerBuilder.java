@@ -23,6 +23,8 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
+import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
 
 
 public class ScannerBuilder extends Builder implements SimpleBuildStep {
@@ -65,7 +67,6 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
-
         run.addAction(new ScannerAction(this.vdooToken, failThreshold, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
     }
 
@@ -104,7 +105,5 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         public String getDisplayName() {
             return Messages.ScannerBuilder_DescriptorImpl_DisplayName();
         }
-
     }
-
 }

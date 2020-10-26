@@ -53,13 +53,19 @@ public class ScannerAction implements RunAction2 {
     private Map<String, Integer> statusToInt;
     private transient String sdkName = "jenkins_plugin";
     private transient String sdkVersion = "0.1";
+    private transient String defaultBaseApi = "https://prod.vdoo.io/";
 
     private transient Run run;
 
     public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
         this.failThreshold = failThreshold;
+
         this.baseApi = baseApi;
+        if (baseApi == null || baseApi.equals("")) {
+            this.baseApi = defaultBaseApi;
+        }
+
         this.productId = productId;
         this.firmwareLocation = firmwareLocation;
         this.run = run;
@@ -84,11 +90,57 @@ public class ScannerAction implements RunAction2 {
         System.out.println("New firmware id:" + this.firmwareUUID);
         logger.println("[VDOO Vision Scanner] Firmware uploaded successfully. Firmware UUID: " + this.firmwareUUID);
 
+        File file = new File(this.firmwareLocation);
+        if (!file.exists()) {
+            throw new AbortException(
+                    "[VDOO Vision Scanner] Configured firmware file doesn't exist:" + this.firmwareLocation
+            );
+        }
+
+        uploadFileAWS(uploadDetails, file);
+       // uploadFileMultiPart(uploadDetails, file);
+
+        String status = waitForEndStatus(logger);
+
+        if (status.equals("Failure")) {
+            String failMessage = "[VDOO Vision Scanner] Vision failed to scan the firmware. Reason: " +
+                statusJson.get("analysis_status").get("current").get("error_code").textValue() +
+                ". Contact support for further details. Firmware UUID: " + this.firmwareUUID;
+
+            logger.println(failMessage);
+            throw new AbortException(failMessage);
+        }
+
+        this.reportJson = callUrl(
+            "v1/cicd/" + this.firmwareUUID + "/report_results/",
+            "GET",
+            null
+        );
+
+        this.saveReportArtifact(logger);
+
+        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
+        {
+            String failMessage = "[VDOO Vision Scanner] Firmware threat level '" + this.getThreatLevel() +
+                    "' is higher than configured threshold '" + this.failThreshold + "'.";
+            throw new AbortException(failMessage);
+        }
+
+        String message = "[VDOO Vision Scanner] VDOO Vision scan successfully finished.";
+        logger.println(message);
+    }
+
+//    private void uploadFileMultiPart(JsonNode uploadDetail, File file) throws FileNotFoundException, InterruptedException {
+//        String bucketName = uploadDetails.get("bucket").textValue();
+//        String keyName = uploadDetails.get("key").textValue();
+//
+//    }
+
+
+    private void uploadFileAWS(JsonNode uploadDetails, File file) throws FileNotFoundException, InterruptedException {
         Regions clientRegion = Regions.US_WEST_2;
         String bucketName = uploadDetails.get("bucket").textValue();
         String keyName = uploadDetails.get("key").textValue();
-        String filePath = this.firmwareLocation;
-        File file = new File(filePath);
 
         try {
             BasicSessionCredentials creds = new BasicSessionCredentials(
@@ -132,35 +184,6 @@ public class ScannerAction implements RunAction2 {
 
         // Sleep one minute to allow the firmware to get taken from the queue:
         Thread.sleep(60 * 1000);
-
-        String status = waitForEndStatus(logger);
-
-        if (status.equals("Failure")) {
-            String failMessage = "[VDOO Vision Scanner] Vision failed to scan the firmware. Reason: " +
-                statusJson.get("analysis_status").get("current").get("error_code").textValue() +
-                ". Contact support for further details. Firmware UUID: " + this.firmwareUUID;
-
-            logger.println(failMessage);
-            throw new AbortException(failMessage);
-        }
-
-        this.reportJson = callUrl(
-            "v1/cicd/" + this.firmwareUUID + "/report_results/",
-            "GET",
-            null
-        );
-
-        this.saveReportArtifact(logger);
-
-        if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
-        {
-            String failMessage = "[VDOO Vision Scanner] Firmware threat level '" + this.getThreatLevel() +
-                    "' is higher than configured threshold '" + this.failThreshold + "'.";
-            throw new AbortException(failMessage);
-        }
-
-        String failMessage = "[VDOO Vision Scanner] VDOO Vision scan successfully finished.";
-        logger.println(failMessage);
     }
 
     private Boolean saveReportArtifact(PrintStream logger) throws IOException {
