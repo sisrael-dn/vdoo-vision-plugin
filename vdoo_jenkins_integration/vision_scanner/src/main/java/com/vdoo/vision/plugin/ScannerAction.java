@@ -47,6 +47,7 @@ public class ScannerAction implements RunAction2 {
     private String firmwareLocation;
     private Integer productId;
     private String firmwareUUID;
+    private Boolean waitForResults;
 
     private transient JsonNode reportJson;
     private transient JsonNode statusJson;
@@ -57,9 +58,10 @@ public class ScannerAction implements RunAction2 {
 
     private transient Run run;
 
-    public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
+    public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, Boolean waitForResults, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
         this.failThreshold = failThreshold;
+        this.waitForResults = waitForResults;
 
         this.baseApi = baseApi;
         if (baseApi == null || baseApi.equals("")) {
@@ -88,7 +90,6 @@ public class ScannerAction implements RunAction2 {
 
         this.firmwareUUID = uploadDetails.get("firmware_id").textValue();
         System.out.println("New firmware id:" + this.firmwareUUID);
-        logger.println("[VDOO Vision Scanner] Firmware uploaded successfully. Firmware UUID: " + this.firmwareUUID);
 
         File file = new File(this.firmwareLocation);
         if (!file.exists()) {
@@ -99,6 +100,12 @@ public class ScannerAction implements RunAction2 {
 
         uploadFileAWS(uploadDetails, file);
        // uploadFileMultiPart(uploadDetails, file);
+        logger.println("[VDOO Vision Scanner] Firmware uploaded successfully. Firmware UUID: " + this.firmwareUUID);
+
+        if (!this.waitForResults) {
+            logger.println("[VDOO Vision Scanner] Not waiting for results. Please check your vision UI for results.");
+            return;
+        }
 
         String status = waitForEndStatus(logger);
 
@@ -346,6 +353,9 @@ public class ScannerAction implements RunAction2 {
         return this.reportJson.get("threat_level").textValue();
     }
 
+    public Boolean getWaitForResults(){
+        return this.waitForResults;
+    }
 
     @Override
     public void onAttached(Run<?, ?> run) {

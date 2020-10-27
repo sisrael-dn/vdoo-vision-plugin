@@ -33,6 +33,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     private final String failThreshold;
     private Integer productId;
     private String firmwareLocation;
+    private Boolean waitForResults;
 
     private String baseApi;
 
@@ -65,9 +66,23 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         this.baseApi = baseApi;
     }
 
+    @DataBoundSetter
+    public void setWaitForResults(Boolean waitForResults) {
+        this.waitForResults = waitForResults;
+    }
+
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
-        run.addAction(new ScannerAction(this.vdooToken, failThreshold, productId, firmwareLocation, this.baseApi, listener.getLogger(), run));
+        run.addAction(new ScannerAction(
+                this.vdooToken,
+                failThreshold,
+                productId,
+                firmwareLocation,
+                this.baseApi,
+                this.waitForResults,
+                listener.getLogger(),
+                run
+        ));
     }
 
 

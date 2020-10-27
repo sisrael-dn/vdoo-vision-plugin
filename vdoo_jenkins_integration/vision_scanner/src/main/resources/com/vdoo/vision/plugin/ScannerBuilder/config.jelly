@@ -29,6 +29,10 @@
         <f:entry title="${%BaseApi}" field="baseApi" description="${%BaseApiDescr}">
             <f:textbox field="baseApi" default="https://prod.vdoo.io/" />
         </f:entry>
+
+        <f:entry title="${%WaitForResults}" field="waitForResults" description="${%WaitForResultsDescr}">
+            <f:checkbox field="waitForResults" default="True" />
+        </f:entry>
     </f:advanced>
 
 </j:jelly>
