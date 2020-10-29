@@ -60,6 +60,12 @@ public class ScannerAction implements RunAction2 {
 
     public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, Boolean waitForResults, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
         this.vdooToken = vdooToken;
+        if (vdooToken == null || vdooToken.getPlainText().equals("")) {
+            throw new AbortException(
+                    "[VDOO Vision Scanner] Configured vdoo token is empty. Please fix your configuration."
+            );
+        }
+
         this.failThreshold = failThreshold;
         this.waitForResults = waitForResults;
 
@@ -69,6 +75,12 @@ public class ScannerAction implements RunAction2 {
         }
 
         this.productId = productId;
+        if (productId == null) {
+            throw new AbortException(
+                "[VDOO Vision Scanner] Configured product id is empty. Please fix your configuration."
+            );
+        }
+
         this.firmwareLocation = firmwareLocation;
         this.run = run;
 
@@ -94,7 +106,7 @@ public class ScannerAction implements RunAction2 {
         File file = new File(this.firmwareLocation);
         if (!file.exists()) {
             throw new AbortException(
-                    "[VDOO Vision Scanner] Configured firmware file doesn't exist:" + this.firmwareLocation
+                    "[VDOO Vision Scanner] Configured firmware file doesn't exist: " + this.firmwareLocation
             );
         }
 
@@ -296,8 +308,10 @@ public class ScannerAction implements RunAction2 {
             Scanner s = new Scanner(responseStream).useDelimiter("\\A");
             String result = s.hasNext() ? s.next() : "";
             System.out.println(result);
+
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readTree(result);
         }
-        return null;
     }
 
 

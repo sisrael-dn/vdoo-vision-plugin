@@ -15,6 +15,7 @@ import hudson.tasks.BuildStepDescriptor;
 
 import com.vdoo.vision.plugin.ScannerAction;
 import javax.servlet.ServletException;
+import java.net.URL;
 import java.io.File;
 import java.io.IOException;
 import jenkins.tasks.SimpleBuildStep;
@@ -107,8 +108,31 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
             if ((firmwareLocation == null) || (firmwareLocation.equals(""))) {
                 return FormValidation.error("Firmware location can't be empty or null.");
             }
-
             return FormValidation.ok();
+        }
+
+        public FormValidation doCheckVdooToken(@QueryParameter Secret vdooToken) {
+            if ((vdooToken == null) || (vdooToken.getPlainText().equals(""))) {
+                return FormValidation.error("Vdoo API token can't be empty or null.");
+            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckBaseApi(@QueryParameter String baseApi) {
+            if ((baseApi == null) || (baseApi.equals(""))) {
+                return FormValidation.error("Base API url can't be empty or null.");
+            }
+
+            try {
+                URL baseApiURL= new URL(baseApi);
+                if (baseApiURL.getProtocol().equals("https")) {
+                    return FormValidation.ok();
+                }
+                return FormValidation.error("Base API url must be HTTPS.");
+
+            } catch (Exception e) {
+                return FormValidation.error("Base API url must be a valid URL.");
+            }
         }
 
         @Override
