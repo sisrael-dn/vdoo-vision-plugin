@@ -92,13 +92,13 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
         public FormValidation doCheckProductId(@QueryParameter String productId) {
             if ((productId == null) || (productId.equals(""))) {
-                return FormValidation.error("Product ID can't be empty or null.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_ProductIdEmpty());
             }
 
             try {
                 Integer.parseInt(productId);
             } catch (NumberFormatException nfe) {
-                return FormValidation.error("Product Id must be a number.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_ProductIdNumber());
             }
 
             return FormValidation.ok();
@@ -106,21 +106,21 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
         public FormValidation doCheckFirmwareLocation(@QueryParameter String firmwareLocation) {
             if ((firmwareLocation == null) || (firmwareLocation.equals(""))) {
-                return FormValidation.error("Firmware location can't be empty or null.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_FirmwareLocationEmpty());
             }
             return FormValidation.ok();
         }
 
         public FormValidation doCheckVdooToken(@QueryParameter Secret vdooToken) {
             if ((vdooToken == null) || (vdooToken.getPlainText().equals(""))) {
-                return FormValidation.error("Vdoo API token can't be empty or null.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_VdooTokenEmpty());
             }
             return FormValidation.ok();
         }
 
         public FormValidation doCheckBaseApi(@QueryParameter String baseApi) {
             if ((baseApi == null) || (baseApi.equals(""))) {
-                return FormValidation.error("Base API url can't be empty or null.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_BaseAPIEmpty());
             }
 
             try {
@@ -128,10 +128,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 if (baseApiURL.getProtocol().equals("https")) {
                     return FormValidation.ok();
                 }
-                return FormValidation.error("Base API url must be HTTPS.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_BaseAPIHttp());
 
             } catch (Exception e) {
-                return FormValidation.error("Base API url must be a valid URL.");
+                return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_BaseAPIInvalid());
             }
         }
 
