@@ -53,17 +53,16 @@ public class ScannerAction implements RunAction2 {
     private transient JsonNode statusJson;
     private Map<String, Integer> statusToInt;
     private transient String sdkName = "jenkins_plugin";
-    private transient String sdkVersion = "0.1";
+    private transient String sdkVersion = "0.2";
     private transient String defaultBaseApi = "https://prod.vdoo.io/";
 
     private transient Run run;
 
     public ScannerAction(Secret vdooToken, String failThreshold, Integer productId, String firmwareLocation, String baseApi, Boolean waitForResults, PrintStream logger, Run<?, ?> run) throws IOException, InterruptedException {
+        System.out.println();
         this.vdooToken = vdooToken;
         if (vdooToken == null || vdooToken.getPlainText().equals("")) {
-            throw new AbortException(
-                    "[VDOO Vision Scanner] Configured vdoo token is empty. Please fix your configuration."
-            );
+            throw new AbortException(Messages.ScannerAction_TokenEmptyError());
         }
 
         this.failThreshold = failThreshold;
@@ -76,9 +75,7 @@ public class ScannerAction implements RunAction2 {
 
         this.productId = productId;
         if (productId == null) {
-            throw new AbortException(
-                "[VDOO Vision Scanner] Configured product id is empty. Please fix your configuration."
-            );
+            throw new AbortException(Messages.ScannerAction_ProductError());
         }
 
         this.firmwareLocation = firmwareLocation;
@@ -101,30 +98,36 @@ public class ScannerAction implements RunAction2 {
         );
 
         this.firmwareUUID = uploadDetails.get("firmware_id").textValue();
-        System.out.println("New firmware id:" + this.firmwareUUID);
-
         File file = new File(this.firmwareLocation);
         if (!file.exists()) {
-            throw new AbortException(
-                    "[VDOO Vision Scanner] Configured firmware file doesn't exist: " + this.firmwareLocation
-            );
+            throw new AbortException(String.format(
+                Messages.ScannerAction_FirmwareFileMissing(),
+                this.firmwareLocation
+            ));
         }
 
         uploadFileAWS(uploadDetails, file);
        // uploadFileMultiPart(uploadDetails, file);
-        logger.println("[VDOO Vision Scanner] Firmware uploaded successfully. Firmware UUID: " + this.firmwareUUID);
+
+        logger.println(String.format(
+            Messages.ScannerAction_FirmwareUploadSuccess(),
+            this.firmwareUUID
+        ));
 
         if (!this.waitForResults) {
-            logger.println("[VDOO Vision Scanner] Not waiting for results. Please check your vision UI for results.");
+            logger.println(Messages.ScannerAction_NotWaitingForResults());
             return;
         }
 
         String status = waitForEndStatus(logger);
 
         if (status.equals("Failure")) {
-            String failMessage = "[VDOO Vision Scanner] Vision failed to scan the firmware. Reason: " +
-                statusJson.get("analysis_status").get("current").get("error_code").textValue() +
-                ". Contact support for further details. Firmware UUID: " + this.firmwareUUID;
+
+            String failMessage = String.format(
+                Messages.ScannerAction_FirmwareScanFailure(),
+                statusJson.get("analysis_status").get("current").get("error_code").textValue(),
+                this.firmwareUUID
+            );
 
             logger.println(failMessage);
             throw new AbortException(failMessage);
@@ -140,13 +143,15 @@ public class ScannerAction implements RunAction2 {
 
         if (statusToInt.get(this.getThreatLevel()) >= statusToInt.get(this.failThreshold))
         {
-            String failMessage = "[VDOO Vision Scanner] Firmware threat level '" + this.getThreatLevel() +
-                    "' is higher than configured threshold '" + this.failThreshold + "'.";
+            String failMessage = String.format(
+                    Messages.ScannerAction_ThreatLevelThresholdPassed(),
+                    this.getThreatLevel(),
+                    this.failThreshold
+            );
             throw new AbortException(failMessage);
         }
 
-        String message = "[VDOO Vision Scanner] VDOO Vision scan successfully finished.";
-        logger.println(message);
+        logger.println(Messages.ScannerAction_ScanFinished());
     }
 
 //    private void uploadFileMultiPart(JsonNode uploadDetail, File file) throws FileNotFoundException, InterruptedException {
@@ -186,11 +191,9 @@ public class ScannerAction implements RunAction2 {
             // TransferManager processes all transfers asynchronously,
             // so this call returns immediately.
             Upload upload = tm.upload(bucketName, keyName, new FileInputStream(file), metadata);
-            System.out.println("Object upload started");
 
             // Optionally, wait for the upload to finish before continuing.
             upload.waitForCompletion();
-            System.out.println("Object upload complete");
         } catch (AmazonServiceException e) {
             // The call was transmitted successfully, but Amazon S3 couldn't process
             // it, so it returned an error response.
@@ -236,7 +239,7 @@ public class ScannerAction implements RunAction2 {
             }
 
         } else {
-            logger.println("[VDOO Vision Scanner] Couldn't create artifact directory. Artifacts won't be saved.");
+            logger.println(Messages.ScannerAction_ArtifactFailed());
         }
 
         return wasArtifactDirCreated;
@@ -261,8 +264,11 @@ public class ScannerAction implements RunAction2 {
                 return status;
             }
 
-            logger.println("[VDOO Vision Scanner] Waiting for results (" + currentTry + " minutes). Current " +
-                    "status: " + status);
+            logger.println(String.format(
+                Messages.ScannerAction_ScanWaitMinutes(),
+                currentTry,
+                status
+            ));
 
             Thread.sleep(60 * 1000);
         }
