@@ -5,6 +5,10 @@
             <f:password />
     </f:entry>
 
+    <f:entry title="${%WaitForResults}" field="waitForResults" description="${%WaitForResultsDescr}">
+        <f:checkbox field="waitForResults" default="True" />
+    </f:entry>
+
     <f:entry title="${%FailThreshold}" name="failThreshold" field="failStatus" description="${%FailThresholdDescr}">
         <select name="failThreshold" default="High">
             <option value="None">None</option>
@@ -30,9 +34,6 @@
             <f:textbox field="baseApi" default="https://prod.vdoo.io/" />
         </f:entry>
 
-        <f:entry title="${%WaitForResults}" field="waitForResults" description="${%WaitForResultsDescr}">
-            <f:checkbox field="waitForResults" default="True" />
-        </f:entry>
     </f:advanced>
 
 </j:jelly>
