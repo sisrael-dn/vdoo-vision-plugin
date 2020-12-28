@@ -1,6 +1,7 @@
 package com.vdoo.vision.plugin;
 
 import com.amazonaws.regions.Regions;
+import com.amazonaws.regions.Region;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.AmazonServiceException;
@@ -107,7 +108,6 @@ public class ScannerAction implements RunAction2 {
         }
 
         uploadFileAWS(uploadDetails, file);
-       // uploadFileMultiPart(uploadDetails, file);
 
         logger.println(String.format(
             Messages.ScannerAction_FirmwareUploadSuccess(),
@@ -120,13 +120,23 @@ public class ScannerAction implements RunAction2 {
         }
 
         String status = waitForEndStatus(logger);
+        boolean didFail = false;
+        String failReason = "";
 
         if (status.equals("Failure")) {
+            failReason = statusJson.get("analysis_status").get("current").get("error_code").textValue();
+            didFail = true;
+        }
+        if (status.equals("timeout")) {
+            failReason = status;
+            didFail = true;
+        }
 
+        if (didFail) {
             String failMessage = String.format(
-                Messages.ScannerAction_FirmwareScanFailure(),
-                statusJson.get("analysis_status").get("current").get("error_code").textValue(),
-                this.firmwareUUID
+                    Messages.ScannerAction_FirmwareScanFailure(),
+                    failReason,
+                    this.firmwareUUID
             );
 
             logger.println(failMessage);
@@ -154,15 +164,11 @@ public class ScannerAction implements RunAction2 {
         logger.println(Messages.ScannerAction_ScanFinished());
     }
 
-//    private void uploadFileMultiPart(JsonNode uploadDetail, File file) throws FileNotFoundException, InterruptedException {
-//        String bucketName = uploadDetails.get("bucket").textValue();
-//        String keyName = uploadDetails.get("key").textValue();
-//
-//    }
-
-
     private void uploadFileAWS(JsonNode uploadDetails, File file) throws FileNotFoundException, InterruptedException {
-        Regions clientRegion = Regions.US_WEST_2;
+        String awsRegion = uploadDetails.get("region").textValue();
+        awsRegion = awsRegion.replace('-', '_');
+        Regions clientRegion = Regions.valueOf(awsRegion.toUpperCase());
+
         String bucketName = uploadDetails.get("bucket").textValue();
         String keyName = uploadDetails.get("key").textValue();
 
@@ -264,11 +270,19 @@ public class ScannerAction implements RunAction2 {
                 return status;
             }
 
-            logger.println(String.format(
-                Messages.ScannerAction_ScanWaitMinutes(),
-                currentTry,
-                status
-            ));
+            if (currentTry == 1) {
+                logger.println(String.format(
+                        Messages.ScannerAction_ScanWaitMinute(),
+                        currentTry,
+                        status
+                ));
+            } else {
+                logger.println(String.format(
+                        Messages.ScannerAction_ScanWaitMinutes(),
+                        currentTry,
+                        status
+                ));
+            }
 
             Thread.sleep(60 * 1000);
         }
