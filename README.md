@@ -29,9 +29,8 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
    Note: this setting is only relevant if *Wait for Analysis Results* is checked.
 
 9. *Artifact ID* determines to which of your artifacts the analyzed images are uploaded.  Artifact IDs can be found in Vdoo Analysis Platform's artifact inventory.
-   1. In tile view, using the *more options*-->*more info* button \
-   <img src="./Docs/Screenshots/MoreOptions.png" alt="" width="326px" height="152" />  \
-   <img src="./Docs/Screenshots/MoreInfo.png" width="312px" height="142px" />
+   1. In tile view, using the *more options*-->*more info* button  
+   <img src="./Docs/Screenshots/MoreOptions.png" alt="" width="326px" height="152" />  <img src="./Docs/Screenshots/MoreInfo.png" width="312px" height="142px" />
    2. In list view, it is displayed in the ID column.
           <img src="./Docs/Screenshots/ListView.png" alt="" width="1042px" height="92" />
 
