@@ -7,7 +7,7 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
 ## Configuration
 
 1. To configure your Jenkins project, first add “Vdoo Analysis Plugin” as a build step to your build.
-   <img src="./Docs/Screenshots/AddStep.png" width="67%" height="67%" />
+   <img src="./Docs/Screenshots/AddStep.png" alt="Add build step" width="381px" height="290px" />
 
 2. *Vision API token* is a token that can be generated from Vdoo Analysis Platform's UI in the User Profile page, under ”Privacy & Security” page. Make sure to store the generated token in a secure manner.
 
