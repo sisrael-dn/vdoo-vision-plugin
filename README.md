@@ -7,7 +7,7 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
 ## Configuration
 
 1. To configure your Jenkins project, first add “Vdoo Analysis Plugin” as a build step to your build.
-   <img src="./Docs/Screenshots/AddStep.png" style="zoom:67%;" />
+   <img src="./Docs/Screenshots/AddStep.png" style="zoom:50%;" />
 2. *Vision API token* is a token that can be generated from Vdoo Analysis Platform's UI in the User Profile page, under ”Privacy & Security” page. Make sure to store the generated token in a secure manner.
 3. *Wait for Analysis Results* determines whether your build pipeline will wait for Vdoo Analysis to complete before moving to the next build step. If this option is not checked, you'll be able to see the report in Vdoo Analysis Platform's web UI or by queries APIs.
 4. *Maximal Allowed Threat Level* is the threat level value that if exceeded, Vdoo Analysis Plugin will fail the build. If the value is set to "None", this setting isn't considered when deciding whether to fail the build.
@@ -20,9 +20,9 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
    Note: this setting is only relevant if *Wait for Analysis Results* is checked.
 8. *Maximal # of Malicious Files* is the value that if exceeded, Vdoo Analysis Plugin will fail the build. If the value is left empty, this setting isn't considered when deciding whether to fail the build.
    Note: this setting is only relevant if *Wait for Analysis Results* is checked.
-9. *Artifact ID* determines to which of your artifacts the analysed images are uploaded.  Artifact IDs can be found in Vdoo Analysis Platform's artifact inventory.
+9. *Artifact ID* determines to which of your artifacts the analyzed images are uploaded.  Artifact IDs can be found in Vdoo Analysis Platform's artifact inventory.
    1. In tile view, using the *more options*-->*more info* button
-           <img src="./Docs/Screenshots/MoreOptions.png" alt="" style="zoom:67%;" /> <img src="./Docs/Screenshots/MoreInfo.png" style="zoom:67%;" />
+           <img src="./Docs/Screenshots/MoreOptions.png" alt="" style="zoom:50%;" /> <img src="./Docs/Screenshots/MoreInfo.png" style="zoom:50%;" />
    2. In list view, it is displayed in the ID column.
           <img src="./Docs/Screenshots/ListView.png" alt="" style="zoom:67%;" />
 10. *Image Location* is the path of the image that will be uploaded to Vdoo Analysis Platform.
