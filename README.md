@@ -7,7 +7,7 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
 ## Configuration
 
 1. To configure your Jenkins project, first add “Vdoo Analysis Plugin” as a build step to your build.
-   <img src="./Docs/Screenshots/AddStep.png" alt="Add build step" width="381px" height="290px" />
+   <img src="./Docs/Screenshots/AddStep.png" alt="" width="381px" height="290px" />
 
 2. *Vision API token* is a token that can be generated from Vdoo Analysis Platform's UI in the User Profile page, under ”Privacy & Security” page. Make sure to store the generated token in a secure manner.
 
@@ -30,9 +30,9 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
 
 9. *Artifact ID* determines to which of your artifacts the analyzed images are uploaded.  Artifact IDs can be found in Vdoo Analysis Platform's artifact inventory.
    1. In tile view, using the *more options*-->*more info* button
-           <img src="./Docs/Screenshots/MoreOptions.png" alt="" style="zoom:50%;" /> <img src="./Docs/Screenshots/MoreInfo.png" style="zoom:50%;" />
+           <img src="./Docs/Screenshots/MoreOptions.png" alt="" width="326px" height="152" /> <img src="./Docs/Screenshots/MoreInfo.png" width="312px" height="142px" />
    2. In list view, it is displayed in the ID column.
-          <img src="./Docs/Screenshots/ListView.png" alt="" style="zoom:67%;" />
+          <img src="./Docs/Screenshots/ListView.png" alt="" width="1042px" height="92" />
 
 10. *Image Location* is the path of the image that will be uploaded to Vdoo Analysis Platform.
 
