@@ -24,7 +24,7 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
    1. In tile view, using the *more options*-->*more info* button
            <img src="./Docs/Screenshots/MoreOptions.png" alt="" style="zoom:67%;" /> <img src="./Docs/Screenshots/MoreInfo.png" style="zoom:67%;" />
    2. In list view, it is displayed in the ID column.
-          <img src="./Docs/Screenshots/ListView.png" alt="" style="zoom:67%;" /> <img src="./Docs/Screenshots/ListView.png" style="zoom:67%;" />
+          <img src="./Docs/Screenshots/ListView.png" alt="" style="zoom:67%;" />
 10. *Image Location* is the path of the image that will be uploaded to Vdoo Analysis Platform.
 11. Under *advanced options* you can find the *Base Vision API URL* field that you should only change if you use a custom Vdoo Analysis Platform installation - any deployment environment whose URL differs from [vision.vdoo.com]().
 
