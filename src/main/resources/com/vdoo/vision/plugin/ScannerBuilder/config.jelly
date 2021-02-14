@@ -1,0 +1,55 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+
+    <f:entry title="${%VdooToken}" field="vdooToken" description="${%VdooTokenDescr}">
+            <f:password />
+    </f:entry>
+
+    <f:entry title="${%WaitForResults}" field="waitForResults" description="${%WaitForResultsDescr}">
+        <f:checkbox field="waitForResults" default="True" />
+    </f:entry>
+
+    <f:entry title="${%FailThreshold}" name="failThreshold" field="failStatus" description="${%FailThresholdDescr}">
+        <select name="failThreshold" default="High">
+            <option value="None" selected="${instance.failThreshold.equals('None') ? 'true' : null}">None</option>
+            <option value="Very High" selected="${instance.failThreshold.equals('Very High') ? 'true' : null}">Very High</option>
+            <option value="High" selected="${instance.failThreshold.equals('High') ? 'true' : null}">High</option>
+            <option value="Medium" selected="${instance.failThreshold.equals('Medium') ? 'true' : null}">Medium</option>
+            <option value="Low" selected="${instance.failThreshold.equals('Low') ? 'true' : null}">Low</option>
+            <option value="Very Low" selected="${instance.failThreshold.equals('Very Low') ? 'true' : null}">Very Low</option>
+        </select>
+    </f:entry>
+
+    <f:entry title="${%MaxHighlightedIssues}" field="maxHighlightedIssues" description="${%MaxHighlightedIssuesDescr}">
+        <f:textbox field="maxHighlightedIssues" />
+    </f:entry>
+
+    <f:entry title="${%MaxHighlightedExposures}" field="maxHighlightedExposures" description="${%MaxHighlightedExposuresDescr}">
+        <f:textbox field="maxHighlightedExposures" />
+    </f:entry>
+
+    <f:entry title="${%MaxHighlightedCVEs}" field="maxHighlightedCVEs" description="${%MaxHighlightedCVEsDescr}">
+        <f:textbox field="maxHighlightedCVEs" />
+    </f:entry>
+
+    <f:entry title="${%MaxMaliciousFiles}" field="maxMaliciousFiles" description="${%MaxMaliciousFilesDescr}">
+        <f:textbox field="maxMaliciousFiles" />
+    </f:entry>
+
+    <f:entry title="${%ProductId}" field="productId" description="${%ProductIdDescr}">
+        <f:textbox field="productId" />
+    </f:entry>
+
+    <f:entry title="${%FirmwareLocation}" field="firmwareLocation" description="${%FirmwareLocationDescr}">
+        <f:textbox field="firmwareLocation" />
+    </f:entry>
+
+
+    <f:advanced>
+        <f:entry title="${%BaseApi}" field="baseApi" description="${%BaseApiDescr}">
+            <f:textbox field="baseApi" default="https://prod.vdoo.io" />
+        </f:entry>
+
+    </f:advanced>
+
+</j:jelly>

@@ -1,2 +1,0 @@
-_extends: .github
-tag-template: vision_scanner-$NEXT_MINOR_VERSION
