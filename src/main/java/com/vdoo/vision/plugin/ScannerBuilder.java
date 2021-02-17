@@ -21,7 +21,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
-    private final Secret vdooToken;
+    private Secret vdooToken;
     private String failThreshold;
     private String maxHighlightedIssues;
     private String maxHighlightedExposures;
@@ -34,30 +34,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     private String baseApi;
 
     @DataBoundConstructor
-    public ScannerBuilder(
-            Secret vdooToken,
-            String failThreshold,
-            String maxHighlightedIssues,
-            String maxHighlightedExposures,
-            String maxHighlightedCVEs,
-            String maxMaliciousFiles,
-            Integer productId,
-            String firmwareLocation,
-            Boolean waitForResults,
-            String baseApi
-    ) {
-        this.vdooToken = vdooToken;
-        this.failThreshold = failThreshold;
-        this.maxHighlightedIssues = maxHighlightedIssues;
-        this.maxHighlightedExposures = maxHighlightedExposures;
-        this.maxHighlightedCVEs = maxHighlightedCVEs;
-        this.maxMaliciousFiles = maxMaliciousFiles;
-        this.waitForResults = waitForResults;
-        this.productId = productId;
-        this.firmwareLocation = firmwareLocation;
-        this.waitForResults = waitForResults;
-        this.baseApi = baseApi;
-    }
+    public ScannerBuilder() {}
 
     public Secret getVdooToken() {
         return vdooToken;
@@ -134,6 +111,21 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         this.maxMaliciousFiles = maxMaliciousFiles;
     }
 
+    @DataBoundSetter
+    public void setProductId(String productId) {
+        this.productId = Integer.parseInt(productId);
+    }
+
+    @DataBoundSetter
+    public void setFirmwareLocation(String firmwareLocation) {
+        this.firmwareLocation = firmwareLocation;
+    }
+
+    @DataBoundSetter
+    public void setVdooToken(Secret vdooToken) {
+        this.vdooToken = vdooToken;
+    }
+
     @Override
     public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
         run.addAction(new ScannerAction(
@@ -152,8 +144,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
         ));
     }
 
-    @Symbol({ "vdooToken", "failThreshold", "maxHighlightedIssues", "maxHighlightedExposures", "maxHighlightedCVEs",
-              "maxMaliciousFiles", "productId", "firmwareLocation", "baseApi" })
+    @Symbol("vdooScan")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
         public FormValidation doCheckProductId(@QueryParameter String productId) {
@@ -162,7 +153,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
             }
 
             try {
-                Integer.parseInt(productId);
+                int productIdNum = Integer.parseInt(productId);
+                if (productIdNum < 1) {
+                    return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_PositiveNumber());
+                }
             } catch (NumberFormatException nfe) {
                 return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_ProductIdNumber());
             }
@@ -206,7 +200,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.ok();
 
             try {
-                Integer.parseInt(maxHighlightedIssues);
+                int maxHighlightedIssuesNum = Integer.parseInt(maxHighlightedIssues);
+                if (maxHighlightedIssuesNum < 0) {
+                    return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_PositiveNumber());
+                }
             } catch (NumberFormatException nfe) {
                 return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_MaxNumber());
             }
@@ -219,7 +216,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.ok();
 
             try {
-                Integer.parseInt(maxHighlightedExposures);
+                int maxHighlightedExposuresNum = Integer.parseInt(maxHighlightedExposures);
+                if (maxHighlightedExposuresNum < 0) {
+                    return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_PositiveNumber());
+                }
             } catch (NumberFormatException nfe) {
                 return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_MaxNumber());
             }
@@ -232,7 +232,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.ok();
 
             try {
-                Integer.parseInt(maxHighlightedCVEs);
+                int maxHighlightedCVEsNum = Integer.parseInt(maxHighlightedCVEs);
+                if (maxHighlightedCVEsNum < 0) {
+                    return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_PositiveNumber());
+                }
             } catch (NumberFormatException nfe) {
                 return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_MaxNumber());
             }
@@ -245,7 +248,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.ok();
 
             try {
-                Integer.parseInt(maxMaliciousFiles);
+                int maxMaliciousFilesNum = Integer.parseInt(maxMaliciousFiles);
+                if (maxMaliciousFilesNum < 0) {
+                    return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_PositiveNumber());
+                }
             } catch (NumberFormatException nfe) {
                 return FormValidation.error(Messages.ScannerBuilder_DescriptorImpl_MaxNumber());
             }
