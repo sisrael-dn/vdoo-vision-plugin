@@ -43,8 +43,6 @@ public class ScannerAction implements RunAction2 {
     private transient JsonNode highlightedIssues;
     private transient JsonNode statusJson;
     private transient Map<String, Integer> statusToInt;
-    private transient String sdkName = "jenkins_plugin";
-    private transient String sdkVersion = "0.3";
     private transient String defaultBaseApi = "https://prod.vdoo.io";
 
     private transient Run run;
@@ -76,7 +74,7 @@ public class ScannerAction implements RunAction2 {
         }
 
         this.artifactId = artifactId;
-        if (artifactId == null) {
+        if (this.artifactId == null) {
             throw new AbortException(Messages.ScannerAction_ProductError());
         }
 
@@ -92,11 +90,11 @@ public class ScannerAction implements RunAction2 {
             {"Very Low",  2},
         }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
-        File file = new File(firmwareLocation);
+        File file = new File(this.firmwareLocation);
         if (!file.exists()) {
             throw new AbortException(String.format(
                     Messages.ScannerAction_FirmwareFileMissing(),
-                    firmwareLocation
+                    this.firmwareLocation
             ));
         }
 
@@ -104,9 +102,9 @@ public class ScannerAction implements RunAction2 {
         try {
             firmwareUUID = sdk.analyzeImage(
                     this.baseApi,
-                    String.valueOf(artifactId),
+                    String.valueOf(this.artifactId),
                     file.getName(),
-                    firmwareLocation,
+                    this.firmwareLocation,
                     vdooToken.getPlainText());
         } catch (IOException e) {
             throw e;
