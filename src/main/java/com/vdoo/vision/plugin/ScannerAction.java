@@ -19,8 +19,6 @@ import jenkins.model.RunAction2;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import com.vdoo.sdk.VdooSDK;
-
 public class ScannerAction implements RunAction2 {
     public static final String REPORT_DIRECTORY_NAME = "VdooVision";
 
@@ -208,30 +206,41 @@ public class ScannerAction implements RunAction2 {
         File artifactDir = new File(run.getArtifactsDir(), REPORT_DIRECTORY_NAME + run.getQueueId());
         Boolean wasArtifactDirCreated = artifactDir.mkdirs();
         if (wasArtifactDirCreated) {
-            ArrayNode analysisResults = dumpReportPart(artifactDir,"analysis_results");
-            ArrayNode highlightedIssues = dumpReportPart(artifactDir,"highlighted_issues");
-            ArrayNode softwareComponents =  dumpReportPart(artifactDir,"software_components");
-            ArrayNode hardwareComponents = dumpReportPart(artifactDir,"hardware_components");
-            ArrayNode cves = dumpReportPart(artifactDir,"cves");
-            ArrayNode exposures =  dumpReportPart(artifactDir,"exposures");
-            ArrayNode maliciousFiles = dumpReportPart(artifactDir,"malicious_files");
+            JsonNode analysisResults = dumpReportPart(artifactDir,"analysis_results", false);
+            JsonNode highlightedIssues = dumpReportPart(artifactDir,"highlighted_issues", false);
+            JsonNode softwareComponents =  dumpReportPart(artifactDir,"software_components", true);
+            JsonNode hardwareComponents = dumpReportPart(artifactDir,"hardware_components", true);
+            JsonNode cves = dumpReportPart(artifactDir,"cves", true);
+            JsonNode exposures =  dumpReportPart(artifactDir,"exposures", true);
+            JsonNode maliciousFiles = dumpReportPart(artifactDir,"malicious_files", true);
+            JsonNode zero_days = dumpReportPart(artifactDir,"potential_zero_days/zero_days", true);
+            JsonNode weaknesses = dumpReportPart(artifactDir,"potential_zero_days/weaknesses", true);
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode aggregatedReport = mapper.createObjectNode();
+            ((ObjectNode) aggregatedReport).set("analysis_summary", analysisResults);
             ((ObjectNode) aggregatedReport).set("highlighted_issues", highlightedIssues);
-            ((ObjectNode) aggregatedReport).set("software_components", softwareComponents);
-            ((ObjectNode) aggregatedReport).set("hardware_components", hardwareComponents);
-            ((ObjectNode) aggregatedReport).set("cves", cves);
-            ((ObjectNode) aggregatedReport).set("exposures", exposures);
-            ((ObjectNode) aggregatedReport).set("malicious_files", maliciousFiles);
+
+            JsonNode components = mapper.createObjectNode();
+            ((ObjectNode) aggregatedReport).set("components", components);
+            ((ObjectNode) components).set("software_components", softwareComponents);
+            ((ObjectNode) components).set("hardware_components", hardwareComponents);
+
+            JsonNode allSecurityIssues = mapper.createObjectNode();
+            ((ObjectNode) aggregatedReport).set("all_security_issues", allSecurityIssues);
+            ((ObjectNode) allSecurityIssues).set("exposures", exposures);
+            ((ObjectNode) allSecurityIssues).set("cves", cves);
+            ((ObjectNode) allSecurityIssues).set("zero_days", zero_days);
+            ((ObjectNode) allSecurityIssues).set("weaknesses", weaknesses);
+            ((ObjectNode) allSecurityIssues).set("malicious_files", maliciousFiles);
 
             File path = new File(artifactDir, "all_findings.json");
             Writer writer = new OutputStreamWriter(new FileOutputStream(path.toString()), "UTF-8");
             writer.write(aggregatedReport.toPrettyString());
             writer.close();
 
-            this.analysisResults = analysisResults.get(0);
-            this.highlightedIssues = highlightedIssues.get(0);
+            this.analysisResults = analysisResults;
+            this.highlightedIssues = highlightedIssues;
         } else {
             logger.println(Messages.ScannerAction_ArtifactFailed());
         }
@@ -266,13 +275,15 @@ public class ScannerAction implements RunAction2 {
         }
     }
 
-    private ArrayNode dumpReportPart(File artifactDir, String reportPartName) throws IOException {
-        File path = new File(artifactDir, reportPartName + ".json");
+    private JsonNode dumpReportPart(File artifactDir, String reportPartName, boolean isArray) throws IOException {
+        String filename = reportPartName.replace("potential_zero_days/", "");
+        File path = new File(artifactDir, filename + ".json");
         Writer writer = new OutputStreamWriter(new FileOutputStream(path.toString()), "UTF-8");
         ArrayNode reportJson = buildReportPartJson(reportPartName);
-        writer.write(reportJson.toPrettyString());
+        JsonNode ret = isArray ? reportJson : reportJson.get(0);
+        writer.write(ret.toPrettyString());
         writer.close();
-        return reportJson;
+        return ret;
     }
 
     private String waitForEndStatus(PrintStream logger) throws IOException, InterruptedException {
