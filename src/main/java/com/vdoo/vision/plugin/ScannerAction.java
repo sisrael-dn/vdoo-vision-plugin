@@ -19,6 +19,8 @@ import jenkins.model.RunAction2;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.vdoo.sdk.VdooSDK;
+
 public class ScannerAction implements RunAction2 {
     public static final String REPORT_DIRECTORY_NAME = "VdooVision";
 
