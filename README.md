@@ -55,7 +55,3 @@ Vdoo welcomes community contribution through pull requests.
 ## LICENSE
 
 Licensed under Apache-2.0 License, see [LICENSE](LICENSE.md)
-
-	
-
-	
