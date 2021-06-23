@@ -3,6 +3,7 @@ package com.vdoo.vision.plugin;
 import java.io.*;
 import java.net.URL;
 import java.util.Map;
+import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Stream;
 import java.net.HttpURLConnection;
@@ -12,7 +13,11 @@ import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import hudson.FilePath;
+import jenkins.MasterToSlaveFileCallable;
+import hudson.remoting.VirtualChannel;
 import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.util.Secret;
 import hudson.AbortException;
 import jenkins.model.RunAction2;
@@ -21,7 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.vdoo.sdk.VdooSDK;
 
-public class ScannerAction implements RunAction2 {
+public class ScannerAction implements RunAction2, Serializable {
     public static final String REPORT_DIRECTORY_NAME = "VdooVision";
 
     // The following properties will be kept inside build.xml for every job (given they are set during ScannerAction)
@@ -38,32 +43,40 @@ public class ScannerAction implements RunAction2 {
     private Boolean waitForResults;
     private String reportLink;
     private String fwName;
+    private TaskListener listener;
+    private File artifactsDir;
+    private long runQueueId;
 
-    private transient JsonNode analysisResults;
-    private transient JsonNode highlightedIssues;
-    private transient JsonNode statusJson;
-    private transient Map<String, Integer> statusToInt;
-    private transient String defaultBaseApi = "https://prod.vdoo.io";
+    private JsonNode analysisResults;
+    private JsonNode highlightedIssues;
+    private JsonNode statusJson;
+    private Map<String, Integer> statusToInt;
+    private String defaultBaseApi = "https://prod.vdoo.io";
 
     private transient Run run;
+
+    private static final long serialVersionUID = 1;
 
     public ScannerAction(Secret vdooToken, String failThreshold, String maxHighlightedIssues,
                         String maxHighlightedExposures, String maxHighlightedCVEs, String maxMaliciousFiles,
                         Integer artifactId, String firmwareLocation,
-                        String baseApi, Boolean waitForResults, PrintStream logger, Run<?, ?> run)
+                        String baseApi, Boolean waitForResults, TaskListener listener, Run<?, ?> run, FilePath workspace)
             throws IOException, InterruptedException {
 
         this.vdooToken = vdooToken;
         if (vdooToken == null || vdooToken.getPlainText().equals("")) {
             throw new AbortException(Messages.ScannerAction_TokenEmptyError());
         }
-
+        this.listener = listener;
         this.failThreshold = failThreshold;
         this.maxHighlightedIssues = maxHighlightedIssues;
         this.maxHighlightedExposures = maxHighlightedExposures;
         this.maxHighlightedCVEs = maxHighlightedCVEs;
         this.maxMaliciousFiles = maxMaliciousFiles;
         this.waitForResults = waitForResults;
+
+        this.runQueueId = run.getQueueId();
+        this.artifactsDir = run.getArtifactsDir();
 
         this.baseApi = baseApi;
         if (baseApi == null || baseApi.equals("")) {
@@ -90,65 +103,85 @@ public class ScannerAction implements RunAction2 {
             {"Very Low",  2},
         }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
-        File file = new File(this.firmwareLocation);
+        FilePath file = new FilePath(new File(firmwareLocation));
         if (!file.exists()) {
-            throw new AbortException(String.format(
-                    Messages.ScannerAction_FirmwareFileMissing(),
-                    this.firmwareLocation
-            ));
+            file = new FilePath(workspace, firmwareLocation);
+
+            if (!file.exists()) {
+                throw new AbortException(String.format(
+                        Messages.ScannerAction_FirmwareFileMissing(),
+                        this.firmwareLocation
+                ));
+            }
         }
 
-        VdooSDK sdk = new VdooSDK();
         try {
-            firmwareUUID = sdk.analyzeImage(
-                    this.baseApi,
-                    String.valueOf(this.artifactId),
-                    file.getName(),
-                    this.firmwareLocation,
-                    vdooToken.getPlainText());
+            PrintStream logger = listener.getLogger();
+
+            firmwareUUID = file.act(new Analyze());
+
+            saveReportArtifact(logger);
+            saveReportAttributesInJobFile();
+            checkThresholds();
+
+            logger.println(Messages.ScannerAction_ScanFinished());
         } catch (IOException e) {
             throw e;
         }
+    }
 
-        logger.println(String.format(
-            Messages.ScannerAction_FirmwareUploadSuccess(),
-            firmwareUUID
-        ));
+    // if 'file' is on a different node, this FileCallable will
+    // be transferred to that node and executed there.
+    private final class Analyze extends MasterToSlaveFileCallable<String> {
+        private static final long serialVersionUID = 1;
 
-        if (!waitForResults) {
-            logger.println(Messages.ScannerAction_NotWaitingForResults());
-            return;
-        }
+        @Override public String invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+            PrintStream logger = listener.getLogger();
+            VdooSDK sdk = new VdooSDK();
 
-        String status = waitForEndStatus(logger);
-        boolean didFail = false;
-        String failReason = "";
-
-        if (status.equals("Failure")) {
-            failReason = statusJson.get("analysis_status").get("current").get("error_code").textValue();
-            didFail = true;
-        }
-        if (status.equals("timeout")) {
-            failReason = status;
-            didFail = true;
-        }
-
-        if (didFail) {
-            String failMessage = String.format(
-                    Messages.ScannerAction_FirmwareScanFailure(),
-                    failReason,
-                    firmwareUUID
+            firmwareUUID = sdk.analyzeImage(
+                    baseApi,
+                    String.valueOf(artifactId),
+                    f.getName(),
+                    f.getAbsolutePath(),
+                    vdooToken.getPlainText()
             );
 
-            logger.println(failMessage);
-            throw new AbortException(failMessage);
+            logger.println(String.format(
+                    Messages.ScannerAction_FirmwareUploadSuccess(),
+                    firmwareUUID
+            ));
+
+            if (!waitForResults) {
+                logger.println(Messages.ScannerAction_NotWaitingForResults());
+                return firmwareUUID;
+            }
+
+            String status = waitForEndStatus(logger);
+            boolean didFail = false;
+            String failReason = "";
+
+            if (status.equals("Failure")) {
+                failReason = statusJson.get("analysis_status").get("current").get("error_code").textValue();
+                didFail = true;
+            }
+            if (status.equals("timeout")) {
+                failReason = status;
+                didFail = true;
+            }
+
+            if (didFail) {
+                String failMessage = String.format(
+                        Messages.ScannerAction_FirmwareScanFailure(),
+                        failReason,
+                        firmwareUUID
+                );
+
+                logger.println(failMessage);
+                throw new AbortException(failMessage);
+            }
+            return firmwareUUID;
         }
-
-        saveReportArtifact(logger);
-        saveReportAttributesInJobFile();
-        checkThresholds();
-
-        logger.println(Messages.ScannerAction_ScanFinished());
     }
 
     /*

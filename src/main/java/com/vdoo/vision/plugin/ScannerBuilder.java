@@ -139,8 +139,9 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 firmwareLocation,
                 this.baseApi,
                 this.waitForResults,
-                listener.getLogger(),
-                run
+                listener,
+                run,
+                workspace
         ));
     }
 
