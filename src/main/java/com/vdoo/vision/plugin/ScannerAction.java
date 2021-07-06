@@ -480,14 +480,23 @@ public class ScannerAction implements RunAction2, Serializable {
     }
 
     public int getHighlightedExposuresCount() {
+        if (highlightedIssues == null) {
+            return 0;
+        }
         return highlightedIssues.get("exposures").size();
     }
 
     public int getHighlightedCVEsCount() {
+        if (highlightedIssues == null) {
+            return 0;
+        }
         return highlightedIssues.get("cves").size();
     }
 
     public int getMaliciousFiles() {
+        if (highlightedIssues == null) {
+            return 0;
+        }
         return highlightedIssues.get("malicious_files").size();
     }
 
