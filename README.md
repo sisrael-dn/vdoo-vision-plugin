@@ -38,9 +38,7 @@ Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their image
     * The path is first tried as an absolute path. This will only work if the file is on the master node. This behaviour will be deprecated in favour of:
     * The path is then tried as a relative path to the workspace. This supports both the case of running on the master node and of running on an agent node.
 
-11. Under *advanced options* you can find the *Base Vision API URL* field that you should only change if your **Vision url** is different 
-from `vision.vdoo.com`. 
-Default value: `https://prod.vdoo.io`.
+11. Under *advanced options* you can find the *Base Vision API URL* field that you should only change if your **Vision url** is different from `vision.vdoo.com`. Default value: `https://prod.vdoo.io`. Find the Base URL of your deployment in the About popup.
 
 
 ## Image Analysis
