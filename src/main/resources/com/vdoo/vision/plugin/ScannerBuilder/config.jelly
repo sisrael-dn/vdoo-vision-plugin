@@ -44,6 +44,9 @@
         <f:textbox field="firmwareLocation" />
     </f:entry>
 
+    <f:entry title="${%FirmwareVersion}" field="firmwareVersion" description="${%FirmwareVersionDescr}">
+        <f:textbox field="firmwareVersion" />
+    </f:entry>
 
     <f:advanced>
         <f:entry title="${%BaseApi}" field="baseApi" description="${%BaseApiDescr}">

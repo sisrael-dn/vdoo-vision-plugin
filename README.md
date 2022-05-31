@@ -4,6 +4,10 @@
 
 Vdoo Analysis is a Jenkins plugin that enables Jenkins users to test their images using Vdoo automated security analysis platform as a part of their CI/CD process.
 
+## Build
+```
+mvn install
+```
 ## Configuration
 
 1. To configure your Jenkins project, first add “Vdoo Analysis Plugin” as a build step to your build.

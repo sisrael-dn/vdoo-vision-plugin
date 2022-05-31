@@ -57,11 +57,12 @@ public class VdooSDK {
 
         try {
             InputStream responseStream = connection.getInputStream();
-            Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A");
-            String result = s.hasNext() ? s.next() : "";
+            try (Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A")) {
+                String result = s.hasNext() ? s.next() : "";
 
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readTree(result);
+                ObjectMapper mapper = new ObjectMapper();
+                return mapper.readTree(result);
+            }
 
         } catch (IOException e) {
             InputStream responseStream = connection.getErrorStream();
@@ -74,12 +75,13 @@ public class VdooSDK {
                 );
             }
 
-            Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A");
-            String result = s.hasNext() ? s.next() : "";
+            try (Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A")) {
+                String result = s.hasNext() ? s.next() : "";
 
-            ObjectMapper mapper = new ObjectMapper();
-            String error = "Calling url " + urlString + " returned an error:" + mapper.readTree(result).toString();
-            throw new AbortException(connection.getResponseCode(), error);
+                ObjectMapper mapper = new ObjectMapper();
+                String error = "Calling url " + urlString + " returned an error:" + mapper.readTree(result).toString();
+                throw new AbortException(connection.getResponseCode(), error);
+            }
         }
     }
 
@@ -87,15 +89,17 @@ public class VdooSDK {
         RandomAccessFile fileObj;
         String fileName;
         String artifactId;
+        String artifactVersion;
         String token;
         String imageId;
         int totalParts;
         int maxConcurrency;
 
-        MultipartUploader(RandomAccessFile fileObj, String fileName, String artifactId, String token) {
+        MultipartUploader(RandomAccessFile fileObj, String fileName, String artifactId, String artifactVersion, String token) {
             this.fileObj = fileObj;
             this.fileName = fileName;
             this.artifactId = artifactId;
+            this.artifactVersion = artifactVersion;
             this.token = token;
 
             imageId = null;
@@ -139,6 +143,7 @@ public class VdooSDK {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode uploadParams = mapper.createObjectNode();
             uploadParams.put("artifact_id", this.artifactId);
+            uploadParams.put("version", this.artifactVersion);
             uploadParams.put("sdk_version", SDK_VERSION);
             uploadParams.put("sdk_name", SDK_NAME);
             uploadParams.put("file_name", fileName);
@@ -247,9 +252,9 @@ public class VdooSDK {
         }
     }
 
-    private String uploadFile(String artifactId, String name, String imageFile, String token) throws IOException {
+    private String uploadFile(String artifactId, String artifactVersion, String name, String imageFile, String token) throws IOException {
         RandomAccessFile fileObj = new RandomAccessFile(imageFile, "r");
-        MultipartUploader uploader = new MultipartUploader(fileObj, name, artifactId, token);
+        MultipartUploader uploader = new MultipartUploader(fileObj, name, artifactId, artifactVersion, token);
         return uploader.upload();
     }
 
@@ -293,10 +298,10 @@ public class VdooSDK {
         }
     }
 
-    public String analyzeImage(String baseUrl, String artifactId, String fileName, String filePath, String token)
+    public String analyzeImage(String baseUrl, String artifactId, String artifactVersion, String fileName, String filePath, String token)
             throws IOException {
         this.baseUrl = baseUrl;
-        String imageUuid = uploadFile(artifactId, fileName, filePath, token);
+        String imageUuid = uploadFile(artifactId, artifactVersion, fileName, filePath, token);
         return imageUuid;
     }
 }

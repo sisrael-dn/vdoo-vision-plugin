@@ -29,6 +29,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     private String maxMaliciousFiles;
     private Integer productId;
     private String firmwareLocation;
+    private String firmwareVersion;
     private Boolean waitForResults;
 
     private String baseApi;
@@ -66,6 +67,10 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
 
     public String getFirmwareLocation() {
         return firmwareLocation;
+    }
+
+    public String getFirmwareVersion() {
+        return firmwareVersion;
     }
 
     public String getBaseApi() {
@@ -122,6 +127,11 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
     }
 
     @DataBoundSetter
+    public void setFirmwareVersion(String firmwareVersion) {
+        this.firmwareVersion = firmwareVersion;
+    }
+
+    @DataBoundSetter
     public void setVdooToken(Secret vdooToken) {
         this.vdooToken = vdooToken;
     }
@@ -137,6 +147,7 @@ public class ScannerBuilder extends Builder implements SimpleBuildStep {
                 maxMaliciousFiles,
                 productId,
                 firmwareLocation,
+                firmwareVersion,
                 this.baseApi,
                 this.waitForResults,
                 listener,

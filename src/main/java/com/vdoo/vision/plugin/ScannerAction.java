@@ -3,7 +3,6 @@ package com.vdoo.vision.plugin;
 import java.io.*;
 import java.net.URL;
 import java.util.Map;
-import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Stream;
 import java.net.HttpURLConnection;
@@ -19,6 +18,7 @@ import hudson.remoting.VirtualChannel;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.util.Secret;
+import io.jenkins.cli.shaded.org.apache.commons.lang.StringUtils;
 import hudson.AbortException;
 import jenkins.model.RunAction2;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,14 +38,12 @@ public class ScannerAction implements RunAction2, Serializable {
     private String maxMaliciousFiles;
     private String baseApi;
     private String firmwareLocation;
+    private String firmwareVersion;
     private Integer artifactId;
     private String firmwareUUID;
     private Boolean waitForResults;
     private String reportLink;
     private String fwName;
-    private TaskListener listener;
-    private File artifactsDir;
-    private long runQueueId;
 
     private JsonNode analysisResults;
     private JsonNode highlightedIssues;
@@ -53,13 +51,13 @@ public class ScannerAction implements RunAction2, Serializable {
     private Map<String, Integer> statusToInt;
     private String defaultBaseApi = "https://prod.vdoo.io";
 
-    private transient Run run;
+    private transient Run<?, ?> run;
 
     private static final long serialVersionUID = 1;
 
     public ScannerAction(Secret vdooToken, String failThreshold, String maxHighlightedIssues,
                         String maxHighlightedExposures, String maxHighlightedCVEs, String maxMaliciousFiles,
-                        Integer artifactId, String firmwareLocation,
+                        Integer artifactId, String firmwareLocation, String firmwareVersion,
                         String baseApi, Boolean waitForResults, TaskListener listener, Run<?, ?> run, FilePath workspace)
             throws IOException, InterruptedException {
 
@@ -67,17 +65,12 @@ public class ScannerAction implements RunAction2, Serializable {
         if (vdooToken == null || vdooToken.getPlainText().equals("")) {
             throw new AbortException(Messages.ScannerAction_TokenEmptyError());
         }
-        this.listener = listener;
         this.failThreshold = failThreshold;
         this.maxHighlightedIssues = maxHighlightedIssues;
         this.maxHighlightedExposures = maxHighlightedExposures;
         this.maxHighlightedCVEs = maxHighlightedCVEs;
         this.maxMaliciousFiles = maxMaliciousFiles;
         this.waitForResults = waitForResults;
-
-        this.runQueueId = run.getQueueId();
-        this.artifactsDir = run.getArtifactsDir();
-
         this.baseApi = baseApi;
         if (baseApi == null || baseApi.equals("")) {
             this.baseApi = defaultBaseApi;
@@ -92,6 +85,7 @@ public class ScannerAction implements RunAction2, Serializable {
         }
 
         this.firmwareLocation = firmwareLocation;
+        this.firmwareVersion = firmwareVersion;
         this.run = run;
 
         statusToInt = Stream.of(new Object[][]{
@@ -109,8 +103,8 @@ public class ScannerAction implements RunAction2, Serializable {
 
             if (!file.exists()) {
                 throw new AbortException(String.format(
-                        Messages.ScannerAction_FirmwareFileMissing(),
-                        this.firmwareLocation
+                    Messages.ScannerAction_FirmwareFileMissing(),
+                    this.firmwareLocation
                 ));
             }
         }
@@ -120,10 +114,16 @@ public class ScannerAction implements RunAction2, Serializable {
 
             firmwareUUID = file.act(new Analyze());
 
-            saveReportArtifact(logger);
-            saveReportAttributesInJobFile();
-            checkThresholds();
+            if (waitForResults) {
+                String reportDirNameSuffix = StringUtils.capitalize(file.getBaseName());
+                saveReportArtifact(logger, reportDirNameSuffix);
+                saveReportAttributesInJobFile();
+                checkThresholds();
+            } else {
+                logger.println(Messages.ScannerAction_NotWaitingForResults());
+            }
 
+            logger.println(Messages.ScannerAction_FirmwareUploadSuccess());
             logger.println(Messages.ScannerAction_ScanFinished());
         } catch (IOException e) {
             throw e;
@@ -136,49 +136,39 @@ public class ScannerAction implements RunAction2, Serializable {
         private static final long serialVersionUID = 1;
 
         @Override public String invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
-            PrintStream logger = listener.getLogger();
             VdooSDK sdk = new VdooSDK();
 
             firmwareUUID = sdk.analyzeImage(
                     baseApi,
                     String.valueOf(artifactId),
+                    firmwareVersion,
                     f.getName(),
                     f.getAbsolutePath(),
                     vdooToken.getPlainText()
             );
 
-            logger.println(String.format(
-                    Messages.ScannerAction_FirmwareUploadSuccess(),
-                    firmwareUUID
-            ));
+            if (waitForResults) {
+                String status = waitForEndStatus();
+                boolean didFail = false;
+                String failReason = "";
 
-            if (!waitForResults) {
-                logger.println(Messages.ScannerAction_NotWaitingForResults());
-                return firmwareUUID;
-            }
+                if (status.equals("Failure")) {
+                    failReason = statusJson.get("analysis_status").get("current").get("error_code").textValue();
+                    didFail = true;
+                }
+                if (status.equals("timeout")) {
+                    failReason = status;
+                    didFail = true;
+                }
 
-            String status = waitForEndStatus(logger);
-            boolean didFail = false;
-            String failReason = "";
-
-            if (status.equals("Failure")) {
-                failReason = statusJson.get("analysis_status").get("current").get("error_code").textValue();
-                didFail = true;
-            }
-            if (status.equals("timeout")) {
-                failReason = status;
-                didFail = true;
-            }
-
-            if (didFail) {
-                String failMessage = String.format(
+                if (didFail) {
+                    String failMessage = String.format(
                         Messages.ScannerAction_FirmwareScanFailure(),
                         failReason,
                         firmwareUUID
-                );
-
-                logger.println(failMessage);
-                throw new AbortException(failMessage);
+                    );
+                    throw new AbortException(failMessage);
+                }
             }
             return firmwareUUID;
         }
@@ -237,8 +227,8 @@ public class ScannerAction implements RunAction2, Serializable {
         }
     }
 
-    private Boolean saveReportArtifact(PrintStream logger) throws IOException {
-        File artifactDir = new File(run.getArtifactsDir(), REPORT_DIRECTORY_NAME + run.getQueueId());
+    private Boolean saveReportArtifact(PrintStream logger, String reportDirNameSuffix) throws IOException {
+        File artifactDir = new File(run.getArtifactsDir(), REPORT_DIRECTORY_NAME + reportDirNameSuffix);
         Boolean wasArtifactDirCreated = artifactDir.mkdirs();
         if (wasArtifactDirCreated) {
             JsonNode analysisResults = dumpReportPart(artifactDir,"analysis_results", false);
@@ -321,7 +311,7 @@ public class ScannerAction implements RunAction2, Serializable {
         return ret;
     }
 
-    private String waitForEndStatus(PrintStream logger) throws IOException, InterruptedException {
+    private String waitForEndStatus() throws IOException, InterruptedException {
         int maxTries = 60;
         int currentTry = 0;
 
@@ -338,21 +328,6 @@ public class ScannerAction implements RunAction2, Serializable {
             String status = statusJson.get("analysis_status").get("current").get("name").textValue();
             if (status.equals("Success") || status.equals("Failure")) {
                 return status;
-            }
-
-            // Handle the singular minute case - 1 minute, 2 minute**s**:
-            if (currentTry == 1) {
-                logger.println(String.format(
-                        Messages.ScannerAction_ScanWaitMinute(),
-                        currentTry,
-                        status
-                ));
-            } else {
-                logger.println(String.format(
-                        Messages.ScannerAction_ScanWaitMinutes(),
-                        currentTry,
-                        status
-                ));
             }
 
             Thread.sleep(60 * 1000);
@@ -390,11 +365,12 @@ public class ScannerAction implements RunAction2, Serializable {
 
         try {
             InputStream responseStream = connection.getInputStream();
-            Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A");
-            String result = s.hasNext() ? s.next() : "";
+            try (Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A")) {
+                String result = s.hasNext() ? s.next() : "";
 
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readTree(result);
+                ObjectMapper mapper = new ObjectMapper();
+                return mapper.readTree(result);
+            }
 
         } catch (IOException e) {
             InputStream responseStream = connection.getErrorStream();
@@ -406,12 +382,13 @@ public class ScannerAction implements RunAction2, Serializable {
                 );
             }
 
-            Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A");
-            String result = s.hasNext() ? s.next() : "";
+            try (Scanner s = new Scanner(responseStream, "UTF-8").useDelimiter("\\A")) {
+                String result = s.hasNext() ? s.next() : "";
 
-            ObjectMapper mapper = new ObjectMapper();
-            String error = "Calling url " + urlString + " returned an error:" + mapper.readTree(result).toString();
-            throw new AbortException(error);
+                ObjectMapper mapper = new ObjectMapper();
+                String error = "Calling url " + urlString + " returned an error:" + mapper.readTree(result).toString();
+                throw new AbortException(error);
+            }
         }
     }
 
@@ -514,7 +491,7 @@ public class ScannerAction implements RunAction2, Serializable {
         this.run = run;
     }
 
-    public Run getRun() {
+    public Run<?, ?> getRun() {
         return run;
     }
 }
